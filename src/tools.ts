@@ -1,6 +1,10 @@
 import * as Y from 'yjs';
 
+import * as d3Color from 'd3-color';
+
+import { User } from '@jupyterlab/services';
 import { LabIcon } from '@jupyterlab/ui-components';
+
 import { IJCadObject } from './_interface/jcad';
 
 const jvControlLight =
@@ -105,5 +109,17 @@ export function removeStyleFromProperty(
   const el = getElementFromProperty(filePath, prop);
   if (el) {
     properties.forEach(prop => el.style.removeProperty(prop));
+  }
+}
+
+export function getUserColor(user: User.IIdentity): d3Color.RGBColor | null {
+  if (user.color.startsWith('var')) {
+    return d3Color.color(
+      getComputedStyle(document.documentElement).getPropertyValue(
+        user.color.slice(4, -1)
+      )
+    ) as d3Color.RGBColor;
+  } else {
+    return d3Color.color(user.color) as d3Color.RGBColor;
   }
 }

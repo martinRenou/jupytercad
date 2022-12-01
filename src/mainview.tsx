@@ -2,8 +2,6 @@ import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import * as React from 'react';
 
-import * as Color from 'd3-color';
-
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
@@ -28,6 +26,9 @@ import {
   MainAction,
   WorkerAction
 } from './types';
+import {
+  getUserColor
+} from './tools';
 
 // Apply the BVH extension
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -52,6 +53,12 @@ interface IStates {
   loading: boolean;
   lightTheme: boolean;
   remoteUser?: User.IIdentity;
+}
+
+interface ICollaborator3D {
+  pointer: THREE.Mesh;
+
+  camera: THREE.CameraHelper;
 }
 
 /**
@@ -529,22 +536,12 @@ export class MainView extends React.Component<IProps, IStates> {
       this._localPointer.geometry = newGeometry;
     }
     for (const clientId in this._collaboratorPointers) {
-      this._collaboratorPointers[clientId].geometry = newGeometry;
+      this._collaboratorPointers[clientId].pointer.geometry = newGeometry;
     }
   }
 
   private _createPointer(user: User.IIdentity): THREE.Mesh {
-    let clientColor: Color.RGBColor | null = null;
-
-    if (user.color.startsWith('var')) {
-      clientColor = Color.color(
-        getComputedStyle(document.documentElement).getPropertyValue(
-          user.color.slice(4, -1)
-        )
-      ) as Color.RGBColor;
-    } else {
-      clientColor = Color.color(user.color) as Color.RGBColor;
-    }
+    const clientColor = getUserColor(user);
 
     const material = new THREE.MeshBasicMaterial({
       color: clientColor
@@ -555,11 +552,13 @@ export class MainView extends React.Component<IProps, IStates> {
           )
         : 'black'
     });
+
     const pointerGeometry = new THREE.SphereGeometry(
       this._refLength / 10,
       32,
       32
     );
+
     return new THREE.Mesh(pointerGeometry, material);
   }
 
@@ -605,12 +604,21 @@ export class MainView extends React.Component<IProps, IStates> {
       }
       const pointer = remoteState.pointer?.value;
       if (!this._collaboratorPointers[remoteUser]) {
-        // Getting user color
+        const camera = new THREE.PerspectiveCamera(90, 2);
+        const { position, rotation, up } = remoteCamera.value;
+        camera.position.set(position[0], position[1], position[2]);
+        camera.rotation.set(rotation[0], rotation[1], rotation[2]);
+        camera.up.set(up[0], up[1], up[2]);
 
-        this._collaboratorPointers[remoteUser] = this._createPointer(
-          remoteState.user
-        );
-        this._scene.add(this._collaboratorPointers[remoteUser]);
+        this._collaboratorPointers[remoteUser] = {
+          pointer: this._createPointer(
+            remoteState.user
+          ),
+          camera: new THREE.CameraHelper(camera)
+        };
+
+        this._scene.add(this._collaboratorPointers[remoteUser].pointer);
+        this._scene.add(this._collaboratorPointers[remoteUser].camera);
       }
 
       const collaboratorPointer = this._collaboratorPointers[remoteUser];
@@ -731,6 +739,6 @@ export class MainView extends React.Component<IProps, IStates> {
   private _controls: any; // Threejs control
   private _resizeTimeout: any;
   // private _mouseDown = false;
-  private _collaboratorPointers: IDict<THREE.Mesh>;
+  private _collaboratorPointers: IDict<ICollaborator3D>;
   private _localPointer?: THREE.Mesh;
 }

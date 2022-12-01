@@ -9,10 +9,13 @@ export class ToolbarWidget extends Toolbar {
     super(rest);
     this.addClass('jpcad-toolbar-widget');
     this._model = model;
-    const body = ReactWidget.create(
+    const primitives = ReactWidget.create(
       <ToolbarReact toolbarModel={this._model} />
     );
-    this.addItem('body', body);
+
+    this.addItem('primitives', primitives);
+    this.addItem('spacer', Toolbar.createSpacerItem());
+    // this.addItem('collaborators', );
   }
 
   private _model: ToolbarModel;
