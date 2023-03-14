@@ -123,67 +123,69 @@ class FCStd:
         )
 
         # Get objects
-        for obj in fc_file.Objects:
+        for obj in fc_file.RootObjects:
             self._objects.append(self._fc_to_jcad_obj(obj))
 
         os.remove(tmp.name)
 
     def save(self, objects: List, options: Dict, metadata: Dict) -> None:
-        try:
-            if not fc or len(self._sources) == 0:
-                return
+        # TODO Update the saving logic to support a tree
+        # try:
+        #     if not fc or len(self._sources) == 0:
+        #         return
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".FCStd") as tmp:
-                file_content = base64.b64decode(self._sources)
-                tmp.write(file_content)
-            fc_file = fc.app.openDocument(tmp.name)
-            fc_file.Meta = metadata
+        #     with tempfile.NamedTemporaryFile(delete=False, suffix=".FCStd") as tmp:
+        #         file_content = base64.b64decode(self._sources)
+        #         tmp.write(file_content)
+        #     fc_file = fc.app.openDocument(tmp.name)
+        #     fc_file.Meta = metadata
 
-            new_objs = dict([(o["name"], o) for o in objects])
-            current_objs = dict([(o.Name, o) for o in fc_file.Objects])
-            to_remove = [x for x in current_objs if x not in new_objs]
-            to_add = [x for x in new_objs if x not in current_objs]
-            for obj_name in to_remove:
-                fc_file.removeObject(obj_name)
-            for obj_name in to_add:
-                py_obj = new_objs[obj_name]
-                fc_file.addObject(py_obj["shape"], py_obj["name"])
-            to_update = [x for x in new_objs if x in current_objs] + to_add
+        #     new_objs = dict([(o["name"], o) for o in objects])
+        #     current_objs = dict([(o.Name, o) for o in fc_file.Objects])
+        #     to_remove = [x for x in current_objs if x not in new_objs]
+        #     to_add = [x for x in new_objs if x not in current_objs]
+        #     for obj_name in to_remove:
+        #         fc_file.removeObject(obj_name)
+        #     for obj_name in to_add:
+        #         py_obj = new_objs[obj_name]
+        #         fc_file.addObject(py_obj["shape"], py_obj["name"])
+        #     to_update = [x for x in new_objs if x in current_objs] + to_add
 
-            for obj_name in to_update:
-                py_obj = new_objs[obj_name]
+        #     for obj_name in to_update:
+        #         py_obj = new_objs[obj_name]
 
-                fc_obj = fc_file.getObject(py_obj["name"])
+        #         fc_obj = fc_file.getObject(py_obj["name"])
 
-                for prop, jcad_prop_value in py_obj['parameters'].items():
-                    prop_type = fc_obj.getTypeIdOfProperty(prop)
-                    prop_handler = self._prop_handlers.get(prop_type, None)
-                    if prop_handler is not None:
-                        fc_value = prop_handler.jcad_to_fc(
-                            jcad_prop_value,
-                            jcad_object=objects,
-                            fc_prop=getattr(fc_obj, prop),
-                            fc_object=fc_obj,
-                            fc_file=fc_file,
-                        )
-                        if fc_value:
-                            try:
-                                setattr(fc_obj, prop, fc_value)
-                            except:
-                                pass
+        #         for prop, jcad_prop_value in py_obj['parameters'].items():
+        #             prop_type = fc_obj.getTypeIdOfProperty(prop)
+        #             prop_handler = self._prop_handlers.get(prop_type, None)
+        #             if prop_handler is not None:
+        #                 fc_value = prop_handler.jcad_to_fc(
+        #                     jcad_prop_value,
+        #                     jcad_object=objects,
+        #                     fc_prop=getattr(fc_obj, prop),
+        #                     fc_object=fc_obj,
+        #                     fc_file=fc_file,
+        #                 )
+        #                 if fc_value:
+        #                     try:
+        #                         setattr(fc_obj, prop, fc_value)
+        #                     except:
+        #                         pass
 
-            OfflineRenderingUtils.save(
-                fc_file,
-                guidata=_options_to_guidata(options.get("guidata", {})),
-            )
+        #     OfflineRenderingUtils.save(
+        #         fc_file,
+        #         guidata=_options_to_guidata(options.get("guidata", {})),
+        #     )
 
-            fc_file.recompute()
-            with open(tmp.name, "rb") as f:
-                encoded = base64.b64encode(f.read())
-                self._sources = encoded.decode()
-            os.remove(tmp.name)
-        except Exception:
-            print(traceback.print_exc())
+        #     fc_file.recompute()
+        #     with open(tmp.name, "rb") as f:
+        #         encoded = base64.b64encode(f.read())
+        #         self._sources = encoded.decode()
+        #     os.remove(tmp.name)
+        # except Exception:
+        #     print(traceback.print_exc())
+        pass
 
     def _fc_to_jcad_obj(self, obj) -> Dict:
         obj_data = dict(
@@ -191,7 +193,10 @@ class FCStd:
             visible=obj.Visibility,
             parameters={},
             name=obj.Name,
+            label=obj.Label,
+            children=[self._fc_to_jcad_obj(child) for child in obj.OutList]
         )
+        print("--- LOADER", obj_data)
         for prop in obj.PropertiesList:
             prop_type = obj.getTypeIdOfProperty(prop)
             prop_value = getattr(obj, prop)

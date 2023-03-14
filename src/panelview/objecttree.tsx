@@ -9,7 +9,7 @@ import {
   closeIcon
 } from '@jupyterlab/ui-components';
 import { Panel } from '@lumino/widgets';
-import { ReactTree, ThemeSettings, TreeNodeList } from '@naisutech/react-tree';
+import { ReactTree, ThemeSettings, TreeNode, TreeNodeId, TreeNodeList } from '@naisutech/react-tree';
 
 import visibilitySvg from '../../style/icon/visibility.svg';
 import visibilityOffSvg from '../../style/icon/visibilityOff.svg';
@@ -144,32 +144,21 @@ class ObjectTreeReact extends React.Component<IProps, IStates> {
     });
   }
 
-  stateToTree = () => {
+  objectToTree(obj: IJCadObject, parentId?: TreeNodeId): TreeNode {
+    const name = obj.name;
+    return {
+      id: name,
+      label: obj.label ?? obj.name ?? `Object (#${name})`,
+      parentId: parentId ?? null,
+      items: obj.children?.map((child) => this.objectToTree(child, name))
+    };
+  }
+
+  stateToTree(): TreeNodeList {
     if (this.state.jcadObject) {
-      return this.state.jcadObject.map(obj => {
-        const name = obj.name;
-        const items: TreeNodeList = [];
-        if (obj.shape) {
-          items.push({
-            id: `${name}#shape#${obj.shape}#${this.state.filePath}`,
-            label: 'Shape',
-            parentId: name
-          });
-        }
-        if (obj.operators) {
-          items.push({
-            id: `${name}#operator#${this.state.filePath}`,
-            label: 'Operators',
-            parentId: name
-          });
-        }
-        return {
-          id: name,
-          label: obj.name ?? `Object (#${name})`,
-          parentId: null,
-          items
-        };
-      });
+      const tree = this.state.jcadObject.map((object) => this.objectToTree(object));
+      console.log(tree);
+      return tree;
     }
 
     return [];
@@ -249,7 +238,7 @@ class ObjectTreeReact extends React.Component<IProps, IStates> {
     let selectedNodes: (number | string)[] = [];
     if (selectedNode) {
       const parentNode = data.filter(node => node.id === selectedNode);
-      if (parentNode.length > 0 && parentNode[0].items.length > 0) {
+      if (parentNode.length > 0 && parentNode[0].items && parentNode[0].items.length > 0) {
         selectedNodes = [parentNode[0].items[0].id];
       }
     }

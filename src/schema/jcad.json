@@ -45,6 +45,9 @@
         "name": {
           "type": "string"
         },
+        "label": {
+          "type": "string"
+        },
         "visible": {
           "type": "boolean"
         },
@@ -64,6 +67,13 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "children": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/definitions/jcadObject"
           }
         }
       }
